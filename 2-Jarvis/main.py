@@ -686,6 +686,9 @@ if __name__ == "__main__":
             if "open google" in query and awake == True:
                 webbrowser.open("https://google.com")
 
+            if "open news monkey" in query and awake == True:
+                webbrowser.open("https://newsmonkey.world")
+
             if "open email" in query and awake == True:
                 webbrowser.open("https://mail.google.com/mail/u/0/#inbox")
 
