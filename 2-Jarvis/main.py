@@ -1,4 +1,4 @@
-import subprocess  # To execute commands in terminal
+import subprocess
 import speech_recognition as sr
 import datetime
 import time
@@ -14,6 +14,8 @@ import shutil
 import pywhatkit
 import smtplib  # For sending emails
 import re  # For getting to and body for sending email
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
 from datetime import date
 from colorama import Fore  # To colour the print statements
 from selenium import webdriver
@@ -26,6 +28,9 @@ options.add_argument("--headless")
 service = Service(ChromeDriverManager().install())
 driver = webdriver.Chrome(service=service, options=options)
 place = "haridwar"
+
+model_name = "bert-base-nli-mean-tokens"
+model = SentenceTransformer(model_name)
 
 
 def sendMail(to, body):
@@ -529,18 +534,37 @@ def takeCommand():
     return query
 
 
+def commandSimilarity(query):
+    possible_commands = [
+        query, "hello jarvis", "how are you", "good morning", "good afternoon", "good evening", "good night", "what is the temperature", "what is the weather condition", "what is the time", "what is the day", "what is the date today", "are you mad", "open google", "open news monkey", "open email", "open flipkart", "open amazon",  "open youtube", "open wikipedia", "open spotify", "open stackoverflow", "tell me a joke", "tell me a fact", "play music", "thanks", "sleep jarvis", "wake up jarvis"
+    ]
+
+    command_vecs = model.encode(possible_commands)
+
+    results = cosine_similarity(
+        [command_vecs[0]], command_vecs[1:])[0].tolist()
+
+    if (max(results) >= 0.6):
+        return(possible_commands[results.index(max(results))+1])
+    else:
+        return ("")
+
+
 if __name__ == "__main__":
     try:
         wish()
         awake = True
+
         while True:
             query = takeCommand().lower()
 
-            # Logic for executing the tasks based on query:
-            if "hey jarvis" in query and awake == True:
-                query = query.replace("hey jarvis ", "")
+            command_meaning = commandSimilarity(query)
+            print("Command Meaning:", command_meaning)
+            # Logic for executing the commands:
+            if command_meaning == "hello jarvis" and awake == True:
+                speak("Hi sir! How can I help you?")
 
-            if "how are you" in query and awake == True:
+            if command_meaning == "how are you" and awake == True:
                 speak("I am fine Sir, thanks for asking")
 
             if "organise " in query and awake == True:
@@ -556,7 +580,7 @@ if __name__ == "__main__":
                 except:
                     speak("Unable to understand!")
 
-            if "good morning" in query and awake == True:
+            if command_meaning == "good morning" and awake == True:
                 hour = datetime.datetime.now().hour
                 if hour >= 0 and hour < 12:
                     weatherDetails = requests.get(
@@ -569,7 +593,7 @@ if __name__ == "__main__":
                     strtime = time.strftime("%H hours and %M minutes")
                     speak(f"It's {strtime}, so technically it's not morning")
 
-            if "good afternoon" in query or "goodmorning" in query and awake == True:
+            if command_meaning == "good afternoon" and awake == True:
                 hour = datetime.datetime.now().hour
                 if hour >= 12 and hour < 18:
                     weatherDetails = requests.get(
@@ -582,7 +606,7 @@ if __name__ == "__main__":
                     strtime = time.strftime("%H hours and %M minutes")
                     speak(f"It's {strtime}, so technically it's not afternoon")
 
-            if "good evening" in query or "goodevening" in query and awake == True:
+            if command_meaning == "good evening" and awake == True:
                 hour = datetime.datetime.now().hour
                 if hour >= 17 and hour < 19:
                     weatherDetails = requests.get(
@@ -595,7 +619,7 @@ if __name__ == "__main__":
                     strtime = time.strftime("%H hours and %M minutes")
                     speak(f"It's {strtime}, so technically it's not evening")
 
-            if "good night" in query or "goodnight" in query and awake == True:
+            if command_meaning == "good night" and awake == True:
                 hour = datetime.datetime.now().hour
                 if hour >= 19 and hour < 24:
                     weatherDetails = requests.get(
@@ -608,14 +632,14 @@ if __name__ == "__main__":
                     strtime = time.strftime("%H hours and %M minutes")
                     speak(f"It's {strtime}, so technically it's not night")
 
-            if "the temperature" in query and awake == True:
+            if command_meaning == "what is the temperature" and awake == True:
                 data = json.loads(requests.get(
                     "https://api.openweathermap.org/data/2.5/weather?appid=d850f7f52bf19300a9eb4b0aa6b80f0d&q=haridwar&units=metric").text)
                 temperature = data["main"]["temp"]
                 speak(
                     f"Its {temperature} degrees celsius today in haridwar")
 
-            if "weather condition" in query and awake == True:
+            if command_meaning == "what is the weather condition" and awake == True:
                 data = json.loads(requests.get(
                     "https://api.openweathermap.org/data/2.5/weather?appid=d850f7f52bf19300a9eb4b0aa6b80f0d&q=haridwar&units=metric").text)
                 condition = data["weather"][0]["main"]
@@ -623,11 +647,11 @@ if __name__ == "__main__":
                 speak(
                     f"Its {condition} outside")
 
-            if "the time" in query and awake == True:
+            if command_meaning == "what is the time" and awake == True:
                 strtime = time.strftime("%H hours and %M minutes")
                 speak(strtime)
 
-            if "the day" in query and awake == True:
+            if command_meaning == "what is the day" and awake == True:
                 if datetime.datetime.today().weekday() == 0:
                     speak("Monday")
                 elif datetime.datetime.today().weekday() == 1:
@@ -643,7 +667,7 @@ if __name__ == "__main__":
                 elif datetime.datetime.today().weekday() == 6:
                     speak("Sunday")
 
-            if "the date" in query and awake == True:
+            if command_meaning == "what is the date today" and awake == True:
                 d = str(date.today())
                 d = d.split("-")
                 d.reverse()
@@ -677,35 +701,35 @@ if __name__ == "__main__":
                     dateStr += f" {d[i]}"
                 speak(dateStr)
 
-            if "hello jarvis" in query and awake == True:
-                speak("Hi Sir")
-
-            if "are you mad" in query and awake == True:
+            if command_meaning == "are you mad" and awake == True:
                 speak("I can never be as mad as Spider Man")
 
-            if "open google" in query and awake == True:
+            if command_meaning == "open google" and awake == True:
                 webbrowser.open("https://google.com")
 
-            if "open news monkey" in query and awake == True:
+            if command_meaning == "open news monkey" and awake == True:
                 webbrowser.open("https://newsmonkey.world")
 
-            if "open email" in query and awake == True:
+            if command_meaning == "open email" and awake == True:
                 webbrowser.open("https://mail.google.com/mail/u/0/#inbox")
 
-            if "open flipkart" in query and awake == True:
+            if command_meaning == "open flipkart" and awake == True:
                 webbrowser.open("https://flipkart.com")
 
-            if "open amazon" in query and awake == True:
+            if command_meaning == "open amazon" and awake == True:
                 webbrowser.open("https://amazon.in")
 
-            if "open youtube" in query and awake == True:
+            if command_meaning == "open youtube" and awake == True:
                 webbrowser.open("https://youtube.com")
 
-            if "open wikipedia" in query and awake == True:
+            if command_meaning == "open wikipedia" and awake == True:
                 webbrowser.open("https://wikipedia.com")
 
-            if "open spotify" in query and awake == True:
+            if command_meaning == "open spotify" and awake == True:
                 webbrowser.open("https://open.spotify.com")
+
+            if command_meaning == "open stackoverflow" and awake == True:
+                webbrowser.open("https://stackoverflow.com")
 
             if "search google for" in query and awake == True:
                 search = query.replace("search google for ", "")
@@ -777,10 +801,10 @@ if __name__ == "__main__":
                 if "sister-in-law" in to:
                     sendWhatsApp("+919873788317", body)
 
-            if "tell me a joke" in query or "tell me another joke" in query and awake == True:
+            if command_meaning == "tell me a joke" and awake == True:
                 tellJoke()
 
-            if "tell me a fact" in query or "tell me another fact" in query and awake == True:
+            if command_meaning == "tell me a fact" in query and awake == True:
                 fact = randfacts.get_fact()
                 speak(fact)
 
@@ -810,10 +834,7 @@ if __name__ == "__main__":
                 pyautogui.press("tab")
                 pyautogui.press("enter")
 
-            if "open stackoverflow" in query and awake == True:
-                webbrowser.open("https://stackoverflow.com")
-
-            if "it's music time" in query and awake == True:
+            if command_meaning == "play music" and awake == True:
                 speak("Playing your liked songs on spotify")
                 webbrowser.open("https://open.spotify.com/collection/tracks")
                 time.sleep(15)
@@ -865,10 +886,10 @@ if __name__ == "__main__":
                 time.sleep(10)
                 pyautogui.press("f")
 
-            if "thanks" in query or "thank you" in query and awake == True:
+            if command_meaning == "thanks" and awake == True:
                 speak("Mention not Sir")
 
-            if "sleep jarvis" in query or "go to sleep jarvis" in query or "go to bed jarvis" in query and awake == True:
+            if "sleep jarvis" in query and awake == True:
                 speak("As you wish Sir!")
                 awake = False
 
